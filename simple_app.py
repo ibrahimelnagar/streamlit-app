@@ -589,11 +589,11 @@ if __name__ == '__main__':
     if init_database():
         # Start the Flask app in a separate thread
         from threading import Thread
-        thread = Thread(target=lambda: app.run(debug=True, use_reloader=False))
+        thread = Thread(target=lambda: app.run(debug=True, use_reloader=False, port=5001))
         thread.start()
 
         # Use Streamlit to display the Flask app
         st.title("Cash Custody Management System")
-        st.components.v1.html(f'<iframe src="http://127.0.0.1:5000/" width="100%" height="800"></iframe>', height=800)
+        st.components.v1.html(f'<iframe src="http://127.0.0.1:5001/" width="100%" height="800"></iframe>', height=800)
     else:
         st.error("Failed to initialize the database.")
