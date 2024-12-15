@@ -29,8 +29,7 @@ from werkzeug.utils import secure_filename
 import webbrowser
 import threading
 import sqlite3
-import tkinter as tk
-from tkinter import messagebox
+import streamlit as st
 from io import BytesIO
 
 # Configure logging
@@ -71,7 +70,7 @@ def get_data_directory():
         application_path = os.path.dirname(sys.executable)
     else:
         application_path = os.path.dirname(os.path.abspath(__file__))
-    
+
     data_dir = os.path.join(application_path, 'data')
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
@@ -83,7 +82,7 @@ def init_database():
         data_dir = get_data_directory()
         db_path = os.path.join(data_dir, DB_FILENAME)
         logger.info(f"Initializing database at: {db_path}")
-        
+
         # Create new database connection
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -136,17 +135,17 @@ def init_database():
 
         conn.commit()
         conn.close()
-        
+
         # Create upload directory if it doesn't exist
         upload_dir = os.path.join(os.path.dirname(db_path), '..', UPLOAD_FOLDER)
         if not os.path.exists(upload_dir):
             os.makedirs(upload_dir)
-            
+
         return True
 
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
-        messagebox.showerror("Error", f"Failed to initialize database: {str(e)}")
+        st.error(f"Failed to initialize database: {str(e)}")
         return False
 
 def get_db_connection():
@@ -166,12 +165,12 @@ def get_accounts():
         conn = get_db_connection()
         cursor = conn.cursor()
         logger.info("Executing SELECT query for accounts")
-        
+
         # First check what's in the accounts table
         cursor.execute('SELECT * FROM accounts')
         all_accounts = cursor.fetchall()
         logger.info(f"All accounts in database (raw): {all_accounts}")
-        
+
         # Now get the formatted accounts
         cursor.execute('SELECT id, name, balance, CAST(is_system AS INTEGER) FROM accounts ORDER BY name')
         accounts = cursor.fetchall()
@@ -189,10 +188,10 @@ def get_transactions():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Join with accounts table to get account names
         cursor.execute('''
-            SELECT t.id, t.date, t.type, t.description, t.amount, 
+            SELECT t.id, t.date, t.type, t.description, t.amount,
                    t.from_account_id, t.to_account_id, t.receipt_path, t.reimbursed,
                    a1.name as from_account_name, a2.name as to_account_name
             FROM transactions t
@@ -200,10 +199,10 @@ def get_transactions():
             LEFT JOIN accounts a2 ON t.to_account_id = a2.id
             ORDER BY t.date DESC, t.id DESC
         ''')
-        
+
         transactions = cursor.fetchall()
         conn.close()
-        
+
         # Convert to list of dictionaries
         return [{
             'id': t[0],
@@ -216,7 +215,7 @@ def get_transactions():
             'receipt_path': t[7],
             'reimbursed': t[8]
         } for t in transactions]
-        
+
     except Exception as e:
         logger.error(f"Error getting transactions: {str(e)}")
         return []
@@ -239,51 +238,51 @@ def add_account():
     try:
         name = request.form['name']
         balance = float(request.form['balance'])
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Log current accounts before adding
         cursor.execute('SELECT * FROM accounts')
         current_accounts = cursor.fetchall()
         logger.info(f"Current accounts before adding new one: {current_accounts}")
-        
+
         cursor.execute(
             'INSERT INTO accounts (name, balance, is_system) VALUES (?, ?, ?)',
             (name, balance, 0)
         )
-        
+
         # Log accounts after adding
         cursor.execute('SELECT * FROM accounts')
         updated_accounts = cursor.fetchall()
         logger.info(f"Updated accounts after adding new one: {updated_accounts}")
-        
+
         # If initial balance is positive, create a transfer from main account
         if balance > 0:
             cursor.execute("""
-                INSERT INTO transactions 
-                (date, type, description, amount, from_account_id, to_account_id) 
-                VALUES (?, 'TRANSFER', ?, ?, 
+                INSERT INTO transactions
+                (date, type, description, amount, from_account_id, to_account_id)
+                VALUES (?, 'TRANSFER', ?, ?,
                     (SELECT id FROM accounts WHERE name = ?),
                     (SELECT id FROM accounts WHERE name = ?))
-            """, (datetime.now().strftime('%Y-%m-%d'), f'Initial balance for {name}', 
+            """, (datetime.now().strftime('%Y-%m-%d'), f'Initial balance for {name}',
                   balance, SYSTEM_ACCOUNTS['MAIN'], name))
-            
+
             # Update main account balance
             cursor.execute("""
-                UPDATE accounts 
-                SET balance = balance - ? 
+                UPDATE accounts
+                SET balance = balance - ?
                 WHERE name = ?
             """, (balance, SYSTEM_ACCOUNTS['MAIN']))
-        
+
         conn.commit()
         conn.close()
-        
+
         flash('Account added successfully!', 'success')
     except Exception as e:
         logger.error(f"Error adding account: {str(e)}")
         flash(f'Error adding account: {str(e)}', 'error')
-    
+
     return redirect(url_for('index'))
 
 def allowed_file(filename):
@@ -296,14 +295,14 @@ def add_transaction():
     try:
         logger.info("Received transaction request")
         logger.info(f"Form data: {request.form}")
-        
+
         date = request.form['date']
         description = request.form['description']
         amount = float(request.form['amount'])
         transaction_type = request.form['type']
-        
+
         logger.info(f"Processing {transaction_type} transaction for amount {amount}")
-        
+
         # Handle file upload
         receipt_path = None
         if 'receipt' in request.files:
@@ -312,101 +311,101 @@ def add_transaction():
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 receipt_path = filename
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         if transaction_type == 'TRANSFER':
             from_account_id = int(request.form['from_account'])
             to_account_id = int(request.form['to_account'])
-            
+
             logger.info(f"Transfer from account {from_account_id} to account {to_account_id}")
-            
+
             # Add transaction
             cursor.execute("""
-                INSERT INTO transactions 
+                INSERT INTO transactions
                 (date, type, description, amount, from_account_id, to_account_id, receipt_path)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (date, transaction_type, description, amount, from_account_id, to_account_id, receipt_path))
-            
+
             # Update account balances
             cursor.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (amount, from_account_id))
             cursor.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (amount, to_account_id))
-            
+
         elif transaction_type == 'DEPOSIT':
             to_account_id = int(request.form['to_account'])
             logger.info(f"Deposit to account {to_account_id}")
-            
+
             # For deposits, we don't need a from_account - it's external money coming in
             cursor.execute("""
-                INSERT INTO transactions 
+                INSERT INTO transactions
                 (date, type, description, amount, to_account_id, receipt_path)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (date, transaction_type, description, amount, to_account_id, receipt_path))
-            
+
             # Update account balance - just add to the target account
             cursor.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (amount, to_account_id))
-            
+
             # Verify the balance was updated
             cursor.execute("SELECT balance FROM accounts WHERE id = ?", (to_account_id,))
             new_balance = cursor.fetchone()[0]
             logger.info(f"New balance for account {to_account_id}: {new_balance}")
-            
+
         elif transaction_type == 'EXPENSE':
             from_account_id = int(request.form['from_account'])
-            
+
             # Get receivable account ID
             cursor.execute("SELECT id FROM accounts WHERE name = ?", (SYSTEM_ACCOUNTS['RECEIVABLE'],))
             receivable_id = cursor.fetchone()[0]
-            
+
             logger.info(f"Expense from account {from_account_id} to receivable account {receivable_id}")
-            
+
             # Add transaction
             cursor.execute("""
-                INSERT INTO transactions 
+                INSERT INTO transactions
                 (date, type, description, amount, from_account_id, to_account_id, receipt_path, reimbursed)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 0)
             """, (date, transaction_type, description, amount, from_account_id, receivable_id, receipt_path))
-            
+
             # Update account balances
             cursor.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (amount, from_account_id))
             cursor.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (amount, receivable_id))
-            
+
         elif transaction_type == 'REIMBURSE':
             expense_id = int(request.form['expense_id'])
-            
+
             # Get main and receivable account IDs
             cursor.execute("SELECT id FROM accounts WHERE name = ?", (SYSTEM_ACCOUNTS['MAIN'],))
             main_account_id = cursor.fetchone()[0]
             cursor.execute("SELECT id FROM accounts WHERE name = ?", (SYSTEM_ACCOUNTS['RECEIVABLE'],))
             receivable_id = cursor.fetchone()[0]
-            
+
             logger.info(f"Reimbursing expense {expense_id}")
-            
+
             # Mark original expense as reimbursed
             cursor.execute("UPDATE transactions SET reimbursed = 1 WHERE id = ?", (expense_id,))
-            
+
             # Add reimbursement transaction
             cursor.execute("""
-                INSERT INTO transactions 
+                INSERT INTO transactions
                 (date, type, description, amount, from_account_id, to_account_id, receipt_path)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (date, transaction_type, f"Reimbursement for expense #{expense_id}", 
+            """, (date, transaction_type, f"Reimbursement for expense #{expense_id}",
                   amount, receivable_id, main_account_id, receipt_path))
-            
+
             # Update account balances
             cursor.execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", (amount, receivable_id))
             cursor.execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", (amount, main_account_id))
-        
+
         conn.commit()
         logger.info("Transaction completed successfully")
         conn.close()
-        
+
         flash('Transaction added successfully!', 'success')
     except Exception as e:
         logger.error(f"Error adding transaction: {str(e)}")
         flash(f'Error adding transaction: {str(e)}', 'error')
-    
+
     return redirect(url_for('index'))
 
 @app.route('/uploads/<filename>')
@@ -420,10 +419,10 @@ def export_transactions():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Get transactions with account names
         cursor.execute('''
-            SELECT 
+            SELECT
                 t.date,
                 t.type,
                 t.description,
@@ -437,29 +436,29 @@ def export_transactions():
             LEFT JOIN accounts a2 ON t.to_account_id = a2.id
             ORDER BY t.date DESC, t.id DESC
         ''')
-        
+
         transactions = cursor.fetchall()
         conn.close()
 
         # Create a pandas DataFrame
         df = pd.DataFrame(transactions, columns=[
-            'Date', 'Type', 'Description', 'Amount', 
+            'Date', 'Type', 'Description', 'Amount',
             'From Account', 'To Account', 'Receipt Path', 'Reimbursed'
         ])
-        
+
         # Format the DataFrame
         df['Amount'] = df['Amount'].apply(lambda x: f"{x:,.2f}")
         df['Reimbursed'] = df['Reimbursed'].apply(lambda x: 'Yes' if x else 'No')
-        
+
         # Create Excel file in memory
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df.to_excel(writer, sheet_name='Transactions', index=False)
-            
+
             # Get workbook and worksheet objects
             workbook = writer.book
             worksheet = writer.sheets['Transactions']
-            
+
             # Add formats
             header_format = workbook.add_format({
                 'bold': True,
@@ -467,11 +466,11 @@ def export_transactions():
                 'font_color': 'white',
                 'border': 1
             })
-            
+
             # Format header row
             for col_num, value in enumerate(df.columns.values):
                 worksheet.write(0, col_num, value, header_format)
-                
+
             # Adjust column widths
             for i, col in enumerate(df.columns):
                 max_length = max(
@@ -482,10 +481,10 @@ def export_transactions():
 
         # Prepare the output
         output.seek(0)
-        
+
         # Generate filename with current date
         filename = f"transactions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        
+
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -511,14 +510,14 @@ def process_reimbursement():
         # Get system account IDs
         cursor.execute('SELECT id FROM accounts WHERE name = ?', ('Expenses Receivable',))
         expenses_receivable_id = cursor.fetchone()[0]
-        
+
         cursor.execute('SELECT id FROM accounts WHERE name = ?', ('Main Account',))
         main_account_id = cursor.fetchone()[0]
 
         # Check if Expenses Receivable has sufficient balance
         cursor.execute('SELECT balance FROM accounts WHERE id = ?', (expenses_receivable_id,))
         expenses_balance = cursor.fetchone()[0]
-        
+
         if expenses_balance < amount:
             flash('Insufficient balance in Expenses Receivable account!', 'error')
             conn.close()
@@ -527,8 +526,8 @@ def process_reimbursement():
         # Create the reimbursement transaction
         today = datetime.now().strftime('%Y-%m-%d')
         cursor.execute('''
-            INSERT INTO transactions 
-            (date, type, description, amount, from_account_id, to_account_id, reimbursed) 
+            INSERT INTO transactions
+            (date, type, description, amount, from_account_id, to_account_id, reimbursed)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (today, 'REIMBURSE', description, amount, expenses_receivable_id, main_account_id, 1))
 
@@ -544,12 +543,12 @@ def process_reimbursement():
 
         conn.commit()
         conn.close()
-        
+
         flash('Reimbursement processed successfully!', 'success')
     except Exception as e:
         logger.error(f"Error processing reimbursement: {str(e)}")
         flash(f'Error processing reimbursement: {str(e)}', 'error')
-    
+
     return redirect(url_for('index'))
 
 @app.route('/reset_application', methods=['POST'])
@@ -595,4 +594,4 @@ if __name__ == '__main__':
             app.run()
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
-        messagebox.showerror("Error", f"Application startup failed: {str(e)}")
+        st.error(f"Application startup failed: {str(e)}")
