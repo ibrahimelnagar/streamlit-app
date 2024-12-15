@@ -29,7 +29,9 @@ from werkzeug.utils import secure_filename
 import webbrowser
 import threading
 import sqlite3
-import streamlit as st
+import tkinter as tk
+from tkinter import messagebox
+from io import BytesIO
 
 # Configure logging
 logging.basicConfig(
@@ -144,7 +146,7 @@ def init_database():
 
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
-        st.error(f"Failed to initialize database: {str(e)}")
+        messagebox.showerror("Error", f"Failed to initialize database: {str(e)}")
         return False
 
 def get_db_connection():
@@ -584,20 +586,13 @@ def open_browser():
     """Open the browser to the application URL."""
     webbrowser.open('http://127.0.0.1:5000/')
 
-def streamlit_app():
-    st.title("Cash Custody Management System")
-    accounts = get_accounts()
-    for account in accounts:
-        st.write(f"Account: {account['name']} - Balance: {account['balance']}")
-    transactions = get_transactions()
-    for transaction in transactions:
-        st.write(f"Transaction: {transaction['description']} - Amount: {transaction['amount']}")
-
 if __name__ == '__main__':
     try:
         if init_database():
-            st.success("Database initialized successfully.")
-            streamlit_app()
+            # Enable debug mode
+            app.debug = True
+            threading.Timer(1.5, open_browser).start()
+            app.run()
     except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        logger.error(f"An error occurred: {str(e)}")
+        logger.error(f"Application startup failed: {str(e)}")
+        messagebox.showerror("Error", f"Application startup failed: {str(e)}")
