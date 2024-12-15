@@ -586,12 +586,14 @@ def open_browser():
     webbrowser.open('http://127.0.0.1:5000/')
 
 if __name__ == '__main__':
-    try:
-        if init_database():
-            # Enable debug mode
-            app.debug = True
-            threading.Timer(1.5, open_browser).start()
-            app.run()
-    except Exception as e:
-        logger.error(f"Application startup failed: {str(e)}")
-        st.error(f"Application startup failed: {str(e)}")
+    if init_database():
+        # Start the Flask app in a separate thread
+        from threading import Thread
+        thread = Thread(target=lambda: app.run(debug=True, use_reloader=False))
+        thread.start()
+
+        # Use Streamlit to display the Flask app
+        st.title("Cash Custody Management System")
+        st.components.v1.html(f'<iframe src="http://127.0.0.1:5000/" width="100%" height="800"></iframe>', height=800)
+    else:
+        st.error("Failed to initialize the database.")
