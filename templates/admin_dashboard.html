@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Cash Custody</h6>
+                    <h3 class="card-text">{{ "%.2f"|format(cash_custody.balance) }} EGP</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Allocated</h6>
+                    <h3 class="card-text">{{ "%.2f"|format(total_allocated) }} EGP</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Pending Invoices</h6>
+                    <h3 class="card-text">{{ pending_invoices }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Active Employees</h6>
+                    <h3 class="card-text">{{ active_employees }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Invoices -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Pending Invoices</h5>
+        </div>
+        <div class="card-body">
+            {% if pending_invoice_list %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Employee</th>
+                            <th>Amount</th>
+                            <th>Description</th>
+                            <th>File</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in pending_invoice_list %}
+                        <tr>
+                            <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ invoice.user.username }}</td>
+                            <td>{{ "%.2f"|format(invoice.amount) }} EGP</td>
+                            <td>{{ invoice.description }}</td>
+                            <td>
+                                <a href="{{ url_for('download_file', filename=invoice.file_path) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-download"></i> View
+                                </a>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <form method="POST" action="{{ url_for('approve_invoice', invoice_id=invoice.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-success me-2">Approve</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('reject_invoice', invoice_id=invoice.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No pending invoices.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Employee Balances -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Employee Balances</h5>
+        </div>
+        <div class="card-body">
+            {% if employees %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Current Balance</th>
+                            <th>Total Allocated</th>
+                            <th>Total Spent</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees %}
+                        <tr>
+                            <td>{{ employee.username }}</td>
+                            <td>{{ "%.2f"|format(employee.allocated_budget) }} EGP</td>
+                            <td>{{ "%.2f"|format(employee.total_allocated) }} EGP</td>
+                            <td>{{ "%.2f"|format(employee.total_spent) }} EGP</td>
+                            <td>
+                                <a href="{{ url_for('employee_details', user_id=employee.id) }}" class="btn btn-sm btn-info">
+                                    View Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No employees found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

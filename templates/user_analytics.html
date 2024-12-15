@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2>Analytics for {{ user.username }}</h2>
+        <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">Back to Users</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Allocated</h5>
+                <h3>{{ total_allocated }} EGP</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Returned</h5>
+                <h3>{{ total_returned }} EGP</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Invoices</h5>
+                <h3>{{ total_invoices }} EGP</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Transaction History</h5>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Balance After</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if transaction.transaction_type == 'allocation' else 'warning' if transaction.transaction_type == 'return' else 'info' }}">
+                                        {{ transaction.transaction_type }}
+                                    </span>
+                                </td>
+                                <td>{{ transaction.amount }} EGP</td>
+                                <td>{{ transaction.balance_after }} EGP</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Invoice History</h5>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Settlement Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices %}
+                            <tr>
+                                <td>{{ invoice.date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ invoice.amount }} EGP</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if invoice.status == 'settled' else 'warning' if invoice.status == 'pending' else 'danger' }}">
+                                        {{ invoice.status }}
+                                    </span>
+                                </td>
+                                <td>{{ invoice.settlement_date.strftime('%Y-%m-%d') if invoice.settlement_date else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Monthly Analysis</h5>
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Monthly analysis chart
+    const ctx = document.getElementById('monthlyChart').getContext('2d');
+    const monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ monthly_labels|tojson }},
+            datasets: [{
+                label: 'Allocations',
+                data: {{ monthly_allocations|tojson }},
+                backgroundColor: 'rgba(23, 162, 184, 0.5)',
+                borderColor: 'rgba(23, 162, 184, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Returns',
+                data: {{ monthly_returns|tojson }},
+                backgroundColor: 'rgba(40, 167, 69, 0.5)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Invoices',
+                data: {{ monthly_invoices|tojson }},
+                backgroundColor: 'rgba(255, 193, 7, 0.5)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Amount (EGP)'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

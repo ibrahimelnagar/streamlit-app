@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Distribute Cash Custody</h5>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="user_id" class="form-label">Select Employee</label>
+                            <select class="form-control" id="user_id" name="user_id" required>
+                                <option value="">Choose an employee...</option>
+                                {% for user in users %}
+                                    {% if user.role == 'employee' %}
+                                        <option value="{{ user.id }}">{{ user.username }} (Current Balance: {{ "%.2f"|format(user.allocated_budget) }} EGP)</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount (EGP)</label>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                        </div>
+                        <div class="text-end">
+                            <a href="{{ url_for('cash_custody') }}" class="btn btn-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Distribute Funds</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+flask>=2.1.0
+pandas>=1.4.2
+werkzeug>=2.1.1
+pyinstaller>=6.11.1
+Flask-SQLAlchemy>=3.0.2
+Flask-Login>=0.6.2
+Flask-WTF>=1.1.1
+python-dotenv>=1.0.0
+SQLAlchemy>=1.4.41
+WTForms>=3.0.1
+XlsxWriter>=3.2.0
+
+# Testing dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-flask>=1.2.0
+faker>=19.3.0
+
+# Development dependencies
+black>=23.7.0
+flake8>=6.1.0
+isort>=5.12.0
+
+# Additional production dependencies
+Flask-Migrate>=3.1.0
+Flask-Mail>=0.9.1
+python-dateutil>=2.8.2
+Pillow>=10.4.0  # For image processing
+gunicorn>=21.2.0  # For production server
+pyodbc>=4.0.39  # For Access database connection
+openpyxl>=3.1.2

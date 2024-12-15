@@ -1,0 +1,303 @@
+{% extends "base_new.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Export Button -->
+    <div class="row mb-4">
+        <div class="col-12 text-end">
+            <a href="{{ url_for('export_transactions') }}" class="btn btn-primary">
+                <i class="fas fa-file-excel me-2"></i> Export Transactions to Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Account Cards -->
+    <div class="row mb-4">
+        {% for account in accounts %}
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 {% if account.is_system %}border-success{% endif %}">
+                <div class="card-body">
+                    <h5 class="card-title d-flex justify-content-between align-items-center">
+                        {{ account.name }}
+                        <span class="badge {% if account.is_system %}bg-success{% else %}bg-primary{% endif %}">
+                            {{ "Protected" if account.is_system else "Standard" }}
+                        </span>
+                    </h5>
+                    <p class="card-text mt-3">
+                        <span class="h3 {% if account.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ "%.2f"|format(account.balance) }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="row">
+        <!-- Add Account Form -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add Account</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('add_account') }}" method="post">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Account Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="balance" class="form-label">Initial Balance</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" id="balance" name="balance" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Process Reimbursement -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sync me-2"></i>Process Reimbursement</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('process_reimbursement') }}" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="reimbursement_amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" id="reimbursement_amount" name="amount" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reimbursement_description" class="form-label">Description</label>
+                            <input type="text" class="form-control" id="reimbursement_description" name="description" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reimbursement_receipt" class="form-label">Receipt Document</label>
+                            <input type="file" class="form-control" id="reimbursement_receipt" name="receipt" accept=".pdf,.jpg,.jpeg,.png">
+                            <div class="form-text">Accepted formats: PDF, JPG, PNG</div>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check me-2"></i>Process Reimbursement
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Transaction Form -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Add Transaction</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('add_transaction') }}" method="post" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="date" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="date" name="date" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <input type="text" class="form-control" id="description" name="description" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="amount" class="form-label">Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="type" class="form-label">Transaction Type</label>
+                                    <select class="form-select" id="type" name="type" required onchange="updateAccountFields()">
+                                        {% for type_code, type_desc in transaction_types.items() %}
+                                        <option value="{{ type_code }}">{{ type_desc }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3" id="fromAccountDiv">
+                                    <label for="from_account" class="form-label">From Account</label>
+                                    <select class="form-select" id="from_account" name="from_account">
+                                        {% for account in accounts %}
+                                        <option value="{{ account.id }}">{{ account.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3" id="toAccountDiv">
+                                    <label for="to_account" class="form-label">To Account</label>
+                                    <select class="form-select" id="to_account" name="to_account">
+                                        {% for account in accounts %}
+                                        <option value="{{ account.id }}">{{ account.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="receipt" class="form-label">Receipt (optional)</label>
+                                    <input type="file" class="form-control" id="receipt" name="receipt" accept=".pdf,.jpg,.jpeg,.png">
+                                    <div class="form-text">Accepted formats: PDF, JPG, PNG</div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add Transaction
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>From Account</th>
+                                    <th>To Account</th>
+                                    <th>Receipt</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>{{ transaction.date }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if transaction.type == 'DEPOSIT' %}success{% elif transaction.type == 'EXPENSE' %}danger{% elif transaction.type == 'TRANSFER' %}info{% else %}warning{% endif %}">
+                                            {{ transaction.type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ transaction.description }}</td>
+                                    <td class="{% if transaction.type == 'DEPOSIT' %}text-success{% elif transaction.type == 'EXPENSE' %}text-danger{% endif %}">
+                                        ${{ "%.2f"|format(transaction.amount) }}
+                                    </td>
+                                    <td>{{ transaction.from_account }}</td>
+                                    <td>{{ transaction.to_account }}</td>
+                                    <td>
+                                        {% if transaction.receipt_path %}
+                                        <a href="{{ url_for('uploaded_file', filename=transaction.receipt_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-file-alt"></i>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.type == 'EXPENSE' %}
+                                            <span class="badge bg-{% if transaction.reimbursed %}success{% else %}warning{% endif %}">
+                                                {{ "Reimbursed" if transaction.reimbursed else "Pending" }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateAccountFields() {
+    const transactionType = document.getElementById('type').value;
+    const fromAccountDiv = document.getElementById('fromAccountDiv');
+    const toAccountDiv = document.getElementById('toAccountDiv');
+    const fromAccount = document.getElementById('from_account');
+    const toAccount = document.getElementById('to_account');
+
+    // Reset required attributes
+    fromAccount.required = false;
+    toAccount.required = false;
+
+    // Clear and repopulate account options based on transaction type
+    fromAccount.innerHTML = '';
+    toAccount.innerHTML = '';
+
+    // Get all accounts from the server-side data
+    const accounts = {{ accounts|tojson|safe }};
+    console.log('Available accounts:', accounts);
+    
+    switch(transactionType) {
+        case 'TRANSFER':
+            fromAccountDiv.style.display = 'block';
+            toAccountDiv.style.display = 'block';
+            fromAccount.required = true;
+            toAccount.required = true;
+            
+            // All accounts can participate in transfers
+            accounts.forEach(acc => {
+                fromAccount.add(new Option(acc.name, acc.id));
+                toAccount.add(new Option(acc.name, acc.id));
+            });
+            break;
+            
+        case 'DEPOSIT':
+            fromAccountDiv.style.display = 'none';
+            toAccountDiv.style.display = 'block';
+            toAccount.required = true;
+            
+            // All accounts can receive deposits
+            accounts.forEach(acc => {
+                toAccount.add(new Option(acc.name, acc.id));
+            });
+            break;
+            
+        case 'EXPENSE':
+            fromAccountDiv.style.display = 'block';
+            toAccountDiv.style.display = 'none';
+            fromAccount.required = true;
+            
+            // All accounts can have expenses
+            accounts.forEach(acc => {
+                fromAccount.add(new Option(acc.name, acc.id));
+            });
+            break;
+            
+        case 'REIMBURSE':
+            fromAccountDiv.style.display = 'none';
+            toAccountDiv.style.display = 'none';
+            break;
+    }
+}
+
+// Call on page load to set initial state
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Page loaded, updating account fields...');
+    updateAccountFields();
+    
+    // Set today's date as default for transaction date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date').value = today;
+});
+</script>
+{% endblock %}

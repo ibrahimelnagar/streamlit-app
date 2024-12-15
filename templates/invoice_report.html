@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Submit Invoice Report</h5>
+                    {% if current_user.allocated_budget > 0 %}
+                    <div class="alert alert-info">
+                        Your current balance: {{ "%.2f"|format(current_user.allocated_budget) }} EGP
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        Your current balance: {{ "%.2f"|format(current_user.allocated_budget) }} EGP
+                        <br>
+                        <small>Note: You can still submit invoices exceeding your balance.</small>
+                    </div>
+                    {% endif %}
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Invoice Amount (EGP)</label>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" required min="0">
+                            <div class="form-text text-muted">
+                                You can submit invoices for any amount, even if it exceeds your current balance.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="invoice_file" class="form-label">Invoice File (PDF, PNG, JPG only)</label>
+                            <input type="file" class="form-control" id="invoice_file" name="invoice_file" accept=".pdf,.png,.jpg,.jpeg" required>
+                        </div>
+                        <div class="text-end">
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Submit Invoice</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Your Invoice History</h5>
+                    {% if invoices %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>File</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in invoices %}
+                                <tr>
+                                    <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ "%.2f"|format(invoice.amount) }} EGP</td>
+                                    <td>{{ invoice.description }}</td>
+                                    <td>
+                                        <span class="badge {% if invoice.status == 'approved' %}bg-success{% elif invoice.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                                            {{ invoice.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('download_file', filename=invoice.file_path) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No invoices submitted yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('amount').addEventListener('input', function() {
+    var amount = parseFloat(this.value);
+    var balance = {{ current_user.allocated_budget }};
+    
+    if (amount > balance) {
+        this.classList.add('is-warning');
+    } else {
+        this.classList.remove('is-warning');
+    }
+});
+</script>
+{% endblock %}

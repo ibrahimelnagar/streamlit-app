@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">System Reset Confirmation</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>WARNING:</strong> This action will permanently delete all data!
+                    </div>
+                    
+                    <h5>Reset Consequences:</h5>
+                    <ul class="text-danger">
+                        <li>All transactions will be deleted</li>
+                        <li>All custom accounts will be removed</li>
+                        <li>System accounts will be reset to zero balance</li>
+                        <li>This action CANNOT be undone</li>
+                    </ul>
+                    
+                    <form method="POST" action="{{ url_for('reset_data') }}">
+                        <div class="mb-3">
+                            <label for="confirmation" class="form-label">
+                                To confirm, type "RESET" in the box below:
+                            </label>
+                            <input type="text" class="form-control" id="confirmation" name="confirmation" required>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Confirm System Reset
+                            </button>
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
